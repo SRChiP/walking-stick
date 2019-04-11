@@ -1,0 +1,13 @@
+image: python:2.7
+
+stages:
+ - test
+
+before_script:
+  - "pip install -U platformio"
+  # -  platformio lib -g install "FastLED"
+
+job:
+  stage: test
+  script: "platformio ci --project-conf=platformio.ini --lib=lib/*"
+  variables: {PLATFORMIO_CI_SRC: "src/walking_stick.cpp"}
