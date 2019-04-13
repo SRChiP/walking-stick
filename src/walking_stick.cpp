@@ -4,7 +4,6 @@
 
 #include "EasingLibrary.h"
 
-
 // ----------------------------------------------- SETTINGS ------------------------------------------------------------
 
 //Enable or disable DEBUG. Serial is fully disabled if DEBUG is false
@@ -12,20 +11,15 @@
 #define Serial if(DEBUG)Serial
 
 // Settings for the first (lower) sensor
-#define LOWER_SENSOR_TRIGGER_PIN 12
-#define LOWER_SENSOR_ECHO_PIN 11
+#define LOWER_SENSOR_COM_PIN 12
+#define LOWER_SENSOR_POWER_PIN 11  // Pin to turn on power to the sensor
 #define LOWER_SENSOR_MAX_DISTANCE 60 // In centimetres
 
 // ------------------------------------------------ENUMS----------------------------------------------------------------
-typedef enum {
-    OFF,
-    TURNING_ON,
-    RUNNING,
-    TURNING_OFF,
-} STATE;
+
 
 // ----------------------------------------------GLOBAL VARIABLES-------------------------------------------------------
-NewPing sonar_l(LOWER_SENSOR_TRIGGER_PIN, LOWER_SENSOR_TRIGGER_PIN);
+NewPing sonar_l(LOWER_SENSOR_COM_PIN, LOWER_SENSOR_COM_PIN);
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -33,15 +27,16 @@ void setup()
 {
     // delay(800);
     Serial.begin(9600);
-    Serial.println(F("Booting stick..."));    
+    Serial.println(F("Booting stick..."));
+    pinMode(LOWER_SENSOR_POWER_PIN, OUTPUT);
+    digitalWrite(LOWER_SENSOR_POWER_PIN, LOW);
+    Serial.println(F("Sensor 1 ready"));
 }
 
 void loop()
 {
     unsigned long currentMillis = millis();
-    // delay(50);
     Serial.print("Ping: ");
-    // Serial.print(sonar_l.ping_cm());
     Serial.print(sonar_l.ping_median(10) / US_ROUNDTRIP_CM);
     Serial.print("cm, Time Taken: ");
     Serial.print((millis() - currentMillis)/1000.0);
