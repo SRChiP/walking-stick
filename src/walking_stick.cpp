@@ -16,6 +16,7 @@
 #define LOWER_SENSOR_POWER_PIN 11  // Pin to turn on power to the sensor
 #define LOWER_SENSOR_MAX_DISTANCE 60 // In centimetres
 #define AUDIO_TX 10
+#define MOTOR_PIN 6
 
 // ------------------------------------------------ENUMS----------------------------------------------------------------
 class Mp3Notify
@@ -97,6 +98,7 @@ void setup()
     pinMode(LOWER_SENSOR_POWER_PIN, OUTPUT);
     digitalWrite(LOWER_SENSOR_POWER_PIN, LOW);
     Serial.println(F("Sensor 1 ready"));
+    pinMode(MOTOR_PIN, OUTPUT);
 
     audio.begin();
     audio.setVolume(10);
@@ -115,11 +117,23 @@ void loop()
     Serial.print((millis() - currentMillis)/1000.0);
     Serial.println("s");
 
-    if (distance != 0 && distance < 50) {
-        audio.playMp3FolderTrack(1);
-        delay(100);
+    if (distance != 0){
+      if (distance <= 20) {
+        // audio.playMp3FolderTrack(1);
+        digitalWrite(MOTOR_PIN, HIGH);
+        Serial.println("MOTOR HIGH");
+        
+      }
+      else if (distance <= 50) {
+        analogWrite(MOTOR_PIN, 200);
+        Serial.println("MOTOR HIGH");
+      }
+        
+    } else {
+      digitalWrite(MOTOR_PIN, LOW);
+      Serial.println("MOTOR LOW");
     }
-    
+    // delay(100);
     // Check distance in sensor 1
     //   if it's close
     //     sound alarm depending on distance
