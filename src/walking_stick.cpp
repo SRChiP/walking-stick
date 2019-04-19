@@ -111,7 +111,7 @@ void loop()
 {
     unsigned long currentMillis = millis();
     Serial.print("Ping: ");
-    distance = sonar_l.ping_median(10) / US_ROUNDTRIP_CM;
+    distance = sonar_l.ping_median(5) / US_ROUNDTRIP_CM;
     Serial.print(distance);
     Serial.print("cm, Time Taken: ");
     Serial.print((millis() - currentMillis)/1000.0);
@@ -126,13 +126,14 @@ void loop()
       }
       else if (distance <= 50) {
         analogWrite(MOTOR_PIN, 200);
-        Serial.println("MOTOR HIGH");
+        Serial.println("MOTOR MID");
       }
-        
-    } else {
+      else {
       digitalWrite(MOTOR_PIN, LOW);
       Serial.println("MOTOR LOW");
-    }
+      }
+        
+    } 
     // delay(100);
     // Check distance in sensor 1
     //   if it's close
