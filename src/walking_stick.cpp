@@ -107,7 +107,7 @@ void loop()
     distance = readSensor(1);
     distance_2 = readSensor(2);
 
-    if ((distance != 0) || (distance_2 != 0){
+    if ((distance != 0) || (distance_2 != 0)){
       if (distance <= 20 || distance_2 <= 30) {
         // audio.playMp3FolderTrack(1);
         digitalWrite(MOTOR_PIN, HIGH);
