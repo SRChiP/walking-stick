@@ -1,9 +1,7 @@
 #include <Arduino.h>
 #include <NewPing.h>
 #include <SoftwareSerial.h>
-#include <DFMiniMp3.h>
-
-#include "EasingLibrary.h"
+#include <DFPlayerMini_Fast.h>
 
 // ----------------------------------------------- SETTINGS ------------------------------------------------------------
 
@@ -15,113 +13,108 @@
 #define LOWER_SENSOR_COM_PIN 12
 #define LOWER_SENSOR_POWER_PIN 11  // Pin to turn on power to the sensor
 #define LOWER_SENSOR_MAX_DISTANCE 60 // In centimetres
-#define AUDIO_TX 10
+
+#define UPPER_SENSOR_COM_PIN 10
+#define UPPER_SENSOR_MAX_DISTANCE 100 // In centimetres
+#define UPPER_SENSOR_POWER_PIN 9
+
+#define PINGS_PER_CYCLE 3
+
 #define MOTOR_PIN 6
 
-// ------------------------------------------------ENUMS----------------------------------------------------------------
-class Mp3Notify
-{
-public:
-  static void OnError(uint16_t errorCode)
-  {
-    // see DfMp3_Error for code meaning
-    Serial.println();
-    Serial.print("Com Error ");
-    Serial.println(errorCode);
-  }
+#define AUDIO_TX 15
+#define AUDIO_RX 14
 
-  static void OnPlayFinished(uint16_t globalTrack)
-  {
-    Serial.println();
-    Serial.print("Play finished for #");
-    Serial.println(globalTrack);   
-  }
+#define AUDIO_VOLUME 20
 
-  static void OnCardOnline(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("Card online ");
-    Serial.println(code);
-  }
+// ----------------------------------------------- AUDIO ---------------------------------------------------------------
+#define AUDIO_SMOKE_ALARM 1
+#define AUDIO_SMOKE_ALARM_LENGTH 5825
+#define AUDIO_STRANGE_NOISE 2
+#define AUDIO_STRANGE_NOISE_LENGTH 16104
 
-  static void OnUsbOnline(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("USB Disk online ");
-    Serial.println(code);
-  }
-
-  static void OnCardInserted(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("Card inserted ");
-    Serial.println(code);
-  }
-
-  static void OnUsbInserted(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("USB Disk inserted ");
-    Serial.println(code); 
-  }
-
-  static void OnCardRemoved(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("Card removed ");
-    Serial.println(code);  
-  }
-
-  static void OnUsbRemoved(uint16_t code)
-  {
-    Serial.println();
-    Serial.print("USB Disk removed ");
-    Serial.println(code);
-  }
-};
 
 // ----------------------------------------------GLOBAL VARIABLES-------------------------------------------------------
-NewPing sonar_l(LOWER_SENSOR_COM_PIN, LOWER_SENSOR_COM_PIN);
 
-SoftwareSerial serial2(AUDIO_TX, 9); // RX, TX
-DFMiniMp3<SoftwareSerial, Mp3Notify> audio(serial2);
+NewPing sonar_l(LOWER_SENSOR_COM_PIN, LOWER_SENSOR_COM_PIN, LOWER_SENSOR_MAX_DISTANCE);
+NewPing sonar_u(UPPER_SENSOR_COM_PIN, UPPER_SENSOR_COM_PIN, UPPER_SENSOR_MAX_DISTANCE);
 
-unsigned int distance;
+SoftwareSerial Serial2(AUDIO_RX, AUDIO_TX); // RX, TX
+DFPlayerMini_Fast audio;
+
+int dist;  //To use in the readSensor function
+int distance;  // Lower sensor value to use in the main code
+int distance_2;  // Lower sensor value to use in the main code
+unsigned int ping_latency;
+unsigned long currentMillis;
+
+typedef enum {
+    OFF,
+    PLAYING,
+} AUDIO_STATE;
+
+AUDIO_STATE current_state = AUDIO_STATE::OFF;
 
 // --------------------------------------------------------------------------------------------------------------------
 
+/* If sensor is 1, it's the lower sensor. Else it's the upper one */
+int readSensor(int sensor)
+{
+  currentMillis = millis();
+  Serial.print(F("S"));
+  Serial.print(sensor);
+  Serial.print(F(" ("));
+  Serial.print((sensor == 1) ? F("LOWER") : F("UPPER"));
+  Serial.print(F(") Ping: "));
+  if (sensor == 1) {
+    ping_latency = sonar_l.ping_median(PINGS_PER_CYCLE);
+  }
+  else {
+    ping_latency = sonar_u.ping_median(PINGS_PER_CYCLE);
+  }
+  dist = ping_latency / US_ROUNDTRIP_CM;
+  Serial.print(distance);
+  Serial.print(F("cm, Time Taken: "));
+  Serial.print((millis() - currentMillis)/1000.0);
+  Serial.println(F("s"));
+  return (int) dist;
+}
+
 void setup()
 {
-    // delay(800);
-    Serial.begin(9600);
+    Serial.begin(9600);  // Serial communication for debug.
     Serial.println(F("Booting stick..."));
     pinMode(LOWER_SENSOR_POWER_PIN, OUTPUT);
     digitalWrite(LOWER_SENSOR_POWER_PIN, LOW);
     Serial.println(F("Sensor 1 ready"));
-    pinMode(MOTOR_PIN, OUTPUT);
+    
+    pinMode(UPPER_SENSOR_POWER_PIN, OUTPUT);
+    digitalWrite(UPPER_SENSOR_POWER_PIN, LOW);
+    Serial.println(F("Sensor 2 ready"));
 
-    audio.begin();
-    audio.setVolume(10);
-    uint16_t count = audio.getTotalTrackCount();
-    Serial.print("files ");
-    Serial.println(count);
+    pinMode(MOTOR_PIN, OUTPUT);
+    Serial.println(F("Motor ready"));
+
+    Serial2.begin(9600);  // Serial communication for mp3 player.
+    audio.begin(Serial2);
+    audio.volume(20);
+    Serial.println(F("Audio ready"));
 }
 
 void loop()
 {
-    unsigned long currentMillis = millis();
-    Serial.print("Ping: ");
-    distance = sonar_l.ping_median(5) / US_ROUNDTRIP_CM;
-    Serial.print(distance);
-    Serial.print("cm, Time Taken: ");
-    Serial.print((millis() - currentMillis)/1000.0);
-    Serial.println("s");
+    // currentMillis = millis();
+    distance = readSensor(1);
+    distance_2 = readSensor(2);
 
     if (distance != 0){
       if (distance <= 20) {
         // audio.playMp3FolderTrack(1);
         digitalWrite(MOTOR_PIN, HIGH);
         Serial.println("MOTOR HIGH");
+        Serial.println(F("Play Audio"));
+        audio.play(2);
+        delay(80000);
         
       }
       else if (distance <= 50) {
@@ -133,7 +126,7 @@ void loop()
       Serial.println("MOTOR LOW");
       }
         
-    } 
+    }
     // delay(100);
     // Check distance in sensor 1
     //   if it's close
