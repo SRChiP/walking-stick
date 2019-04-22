@@ -161,12 +161,12 @@ void loop()
 
   if ((distance != 0) || (distance_2 != 0))
   {
-    if (distance <= 20 || distance_2 <= 30)
+    if ((distance <= 20 && distance > 0) || (distance_2 <= 30 && distance_2 > 0))
     {
       vibrate(255);
       startPlayingAudio();
     }
-    else if (distance <= 50 || distance_2 <= 40) {
+    else if ((distance <= 50 && distance > 0) || (distance_2 <= 40 && distance_2 > 0)) {
       vibrate(200);
       stopAudio();
     }
