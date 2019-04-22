@@ -28,10 +28,9 @@
 #define AUDIO_VOLUME 20
 
 // ----------------------------------------------- AUDIO ---------------------------------------------------------------
-#define AUDIO_SMOKE_ALARM 1
-#define AUDIO_SMOKE_ALARM_LENGTH 5825
-#define AUDIO_STRANGE_NOISE 2
-#define AUDIO_STRANGE_NOISE_LENGTH 16104
+#define AUDIO_FILE_NUMBER 1
+#define AUDIO_FULL_LENGTH 5825
+#define AUDIO_MIN_LENGTH 752
 
 
 // ----------------------------------------------GLOBAL VARIABLES-------------------------------------------------------
@@ -47,6 +46,7 @@ int distance;  // Lower sensor value to use in the main code
 int distance_2;  // Lower sensor value to use in the main code
 unsigned int ping_latency;
 unsigned long currentMillis;
+unsigned long audioStartMillis;
 
 typedef enum {
     OFF,
@@ -80,6 +80,59 @@ int readSensor(int sensor)
   return (int) dist;
 }
 
+/* Start playing audio or continue playing the audio */
+void startPlayingAudio()
+{
+  if (current_state == AUDIO_STATE::OFF) {
+    audioStartMillis = millis();
+    current_state = AUDIO_STATE::PLAYING;
+    audio.play(AUDIO_FILE_NUMBER);
+    Serial.println(F("Play Audio"));
+  }
+  else 
+  {
+    if (millis() >= (audioStartMillis + AUDIO_FULL_LENGTH)) {
+      current_state = AUDIO_STATE::OFF;
+      audio.pause();
+    }
+    else 
+    {
+      Serial.println(F("Continue Audio"));
+    }
+  }
+}
+
+/* Stop audio after the current partial tone finishes */
+void stopAudio()
+{
+  if (current_state == AUDIO_STATE::PLAYING)
+  {
+    if (millis() >= (audioStartMillis + AUDIO_MIN_LENGTH)) {
+      current_state = AUDIO_STATE::OFF;
+      audio.pause();
+      }
+  }
+}
+
+void vibrate(int amount)
+{
+  if (amount < 1)
+  {
+    digitalWrite(MOTOR_PIN, LOW);
+    Serial.println(F("VIBRATION OFF"));
+  }
+  else if (amount > 254)
+  {
+    digitalWrite(MOTOR_PIN, HIGH);
+    Serial.println(F("VIBRATION ON"));
+  }
+  else
+  {
+    analogWrite(MOTOR_PIN, amount);
+    Serial.println(F("VIBRATION SLOW"));
+  }
+}
+
 void setup()
 {
     Serial.begin(9600);  // Serial communication for debug.
@@ -103,37 +156,28 @@ void setup()
 
 void loop()
 {
-    // currentMillis = millis();
-    distance = readSensor(1);
-    distance_2 = readSensor(2);
+  distance = readSensor(1);
+  distance_2 = readSensor(2);
 
-    if ((distance != 0) || (distance_2 != 0)){
-      if (distance <= 20 || distance_2 <= 30) {
-        // audio.playMp3FolderTrack(1);
-        digitalWrite(MOTOR_PIN, HIGH);
-        Serial.println("MOTOR HIGH");
-        Serial.println(F("Play Audio"));
-        audio.play(2);
-        delay(80000);
-        
-      }
-      else if (distance <= 50 || distance_2 <= 40) {
-        analogWrite(MOTOR_PIN, 200);
-        Serial.println("MOTOR MID");
-      }
-      else {
-      digitalWrite(MOTOR_PIN, LOW);
-      Serial.println("MOTOR LOW");
-      }
-        
+  if ((distance != 0) || (distance_2 != 0))
+  {
+    if (distance <= 20 || distance_2 <= 30)
+    {
+      vibrate(255);
+      startPlayingAudio();
     }
-    // delay(100);
-    // Check distance in sensor 1
-    //   if it's close
-    //     sound alarm depending on distance
-    // check sensor 2
-    //  if close
-    //      sound alarm depending on distance
-    
+    else if (distance <= 50 || distance_2 <= 40) {
+      vibrate(200);
+      stopAudio();
+    }
+    else 
+    {
+      vibrate(0);
+      stopAudio();
+    }
+  }
+  else {
+    stopAudio();
+    vibrate(0);
+  }
 }
-
